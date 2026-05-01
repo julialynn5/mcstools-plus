@@ -3,6 +3,7 @@ import datetime as dt
 import pandas as pd
 import pytz
 from mars_time import datetime_to_marstime
+#from mars_datetime import datetime_to_marstime
 
 GDS_DATE_FMT = "%y%m%d%H%M%S"  # Format used in GDS filenames
 PDS_DATE_FMT = "%Y%m%d%H"  # Format used in PDS filenames
