@@ -1,0 +1,18 @@
+# robots.txt for https://atmos.nmsu.edu/
+
+User-agent: Wget
+Allow: /PDS/
+
+User-agent: *		# All spiders should avoid 
+Disallow: /PDS/		#     Data files
+Disallow: /pub/		#     Data files
+Disallow: /pdsd/	#     Data files
+Disallow: /IJW/
+Disallow: /cgi-bin/
+Disallow: /usage/
+Disallow: /ftp/
+Disallow: /~lhuber
+Disallow: /~rdewitt
+Disallow: /~itrejo
+Disallow: /~asimon
+Disallow: /~rbeebe

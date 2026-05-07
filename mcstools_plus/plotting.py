@@ -2,12 +2,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from mcstools_plus.data_loader import split_df_by_level
 import rasterio
 from rasterio.enums import Resampling
 import warnings
 from rasterio.errors import NotGeoreferencedWarning
 warnings.filterwarnings("ignore", category=NotGeoreferencedWarning) # i dont want to use a .tif so get rid of warning
+
+from mcstools_plus.data_loader import split_df_by_level
 
 def split_df_by_time(df):
     """Splitting data into daytime and nighttime dataframes"""
@@ -23,18 +24,18 @@ def load_in_csv_data(fileloc):
 
 def build_full_df(DDR1, DDR2):
     """Merges DDR1 and DDR2 using Profile_identifier"""
-    return DDR2.merge(DDR1[['Profile_identifier', 'Profile_lat', 'L_s', 'LTST']], on='Profile_identifier', how='left')
+    return DDR2.merge(DDR1[['Profile_identifier', 'Profile_lat', 'L_s', 'LTST', 'Dust_column', 'Dust_column_err']], on='Profile_identifier', how='left')
     
 def bin_data(df, value_col):
     """Binning the data from the inputted dataframe when making lat vs Ls plots"""
     df = df.copy()
     # using the largest and smallest Ls (solar longitude) values to define the bins
-    smallest_ls = df["L_s"].min()
-    largest_ls = df["L_s"].max()
-    smallest_ls = np.floor(df["L_s"].min() * 2) / 2
-    largest_ls  = np.ceil(df["L_s"].max() * 2) / 2
+    smallest_Ls = df["L_s"].min()
+    largest_Ls = df["L_s"].max()
+    smallest_Ls = np.floor(df["L_s"].min() * 2) / 2
+    largest_Ls  = np.ceil(df["L_s"].max() * 2) / 2
     
-    L_s_bin = np.arange(smallest_ls, largest_ls + 0.5, 0.5) # bins of 0.5 degrees in Ls
+    L_s_bin = np.arange(smallest_Ls, largest_Ls + 0.5, 0.5) # bins of 0.5 degrees in Ls
     df['L_s_binned'] = pd.cut(df['L_s'], bins=L_s_bin)
     df['lat_binned'] = pd.cut(df['Profile_lat'], bins=np.linspace(-90, 90, 61))
     df['L_s_center'] = df['L_s_binned'].apply(lambda x: x.left) # definining the bins from the left to prevent data gaps in the plots
@@ -43,7 +44,7 @@ def bin_data(df, value_col):
     # defining the heatmap using a pivot table
     heatmap = df.pivot_table(columns='L_s_center', index='lat_center', values=value_col, aggfunc='mean', dropna=False, observed=False)
     heatmap = heatmap.dropna(axis=1, how='all')
-    return heatmap, smallest_ls, largest_ls, L_s_bin
+    return heatmap, smallest_Ls, largest_Ls, L_s_bin
 
 def prepare_dust_height_data(df):
     """Prepares bins for either the daytime or nighttime data"""
@@ -72,7 +73,7 @@ def plot_dust_height_map(df, title, save_path):
     plt.savefig(save_path)
     plt.show()
 
-def prepare_Ls_lat_val_plot(ax, df, vmin, vmax, cmap, label, title, smallest_ls, largest_ls):
+def prepare_Ls_lat_val_plot(ax, df, vmin, vmax, cmap, label, title, smallest_Ls, largest_Ls):
     """Function that makes the plots because we need to load in 3 different datasets"""
     X, Y = np.meshgrid(df.columns, df.index)
     levels = np.linspace(vmin, vmax, 50)
@@ -91,7 +92,7 @@ def prepare_Ls_lat_val_plot(ax, df, vmin, vmax, cmap, label, title, smallest_ls,
 
     # latitude and Ls ticks
     ax.set_yticks([-90, -45, 0, 45, 90])
-    ax.set_xticks(np.arange(smallest_ls, largest_ls, 0.5))
+    ax.set_xticks(np.arange(smallest_Ls, largest_Ls, 0.5))
     ax.set_ylabel("Latitude (°)")
     ax.set_title(title) # makes naming each subplot easy!
     ax.grid(linestyle=":")
@@ -107,7 +108,7 @@ def day_vs_night_dust_levels(DDR1, DDR2, start_year, start_month, start_day, end
     night_avg = prepare_dust_height_data(night)
 
     # plotting!
-    plot_dust_height_map(day_avg, f"Daytime Dust Map ({start_year}-{start_month}-{start_day} to {end_year}-{end_month}-{end_day})", f"{save_location}/day_dust_height_for_{start_year}-{start_month}-{start_day}to{end_year}-{end_month}-{end_day}.csv.png")
+    plot_dust_height_map(day_avg, f"Daytime Dust Map ({start_year}-{start_month}-{start_day} to {end_year}-{end_month}-{end_day})", f"{save_location}/day_dust_height_for_{start_year}-{start_month}-{start_day}to{end_year}-{end_month}-{end_day}.png")
     plot_dust_height_map(night_avg, f"Nighttime Dust Map ({start_year}-{start_month}-{start_day} to {end_year}-{end_month}-{end_day})", f"{save_location}/night_dust_height_for_{start_year}-{start_month}-{start_day}to{end_year}-{end_month}-{end_day}.png")
 
 def plot_Ls_lat_value(fileloc, start_year, start_month, start_day, end_year, end_month, end_day, save_location):
@@ -122,9 +123,9 @@ def plot_Ls_lat_value(fileloc, start_year, start_month, start_day, end_year, end
     fig.suptitle(f"Dust opacity, temperature, and water ice opacity data from {start_year}-{start_month}-{start_day} to {end_year}-{end_month}-{end_day}")
 
     # using the defined function so i dont have to do the exact same process three times! :D
-    prepare_Ls_lat_val_plot(axes[0], dust_map, vmin=0, vmax=0.005, cmap='YlOrBr', label="Dust Optical Depth", title=f"Dust Opacity", smallest_ls=Ls_min, largest_ls=Ls_max)
-    prepare_Ls_lat_val_plot(axes[1], temp_map, vmin=120, vmax=220, cmap='rainbow',label="Temperature (K)", title=f"Temperature", smallest_ls=Ls_min, largest_ls=Ls_max)
-    prepare_Ls_lat_val_plot(axes[2], ice_map, vmin=0, vmax=0.01, cmap='YlGnBu', label="H2O Ice Opacity", title=f"Water Ice Opacity", smallest_ls=Ls_min, largest_ls=Ls_max)
+    prepare_Ls_lat_val_plot(axes[0], dust_map, vmin=0, vmax=0.005, cmap='YlOrBr', label="Dust Optical Depth", title=f"Dust Opacity", smallest_Ls=Ls_min, largest_Ls=Ls_max)
+    prepare_Ls_lat_val_plot(axes[1], temp_map, vmin=120, vmax=220, cmap='rainbow',label="Temperature (K)", title=f"Temperature", smallest_Ls=Ls_min, largest_Ls=Ls_max)
+    prepare_Ls_lat_val_plot(axes[2], ice_map, vmin=0, vmax=0.01, cmap='YlGnBu', label="H2O Ice Opacity", title=f"Water Ice Opacity", smallest_Ls=Ls_min, largest_Ls=Ls_max)
 
     # single x axis label for Ls
     plt.xlabel("$L_s$ (°)")
@@ -169,6 +170,12 @@ def prepare_plot_important_pressures_grid(data_dict, vmin, vmax, cmap, title, cb
     levels = np.linspace(vmin, vmax, 56)
     # going through the dictionary and creating contour plots for each pressure level
     for i, (ax, (label, data)) in enumerate(zip(axs, data_dict.items())):
+        
+        if data.shape[1] < 2 or data.shape[0] < 2: # to help when we are going through sparse data
+            ax.set_title(f"{label}\n(no data)")
+            ax.axis('off')
+            continue
+            
         X, Y = np.meshgrid(data.columns, data.index)
         cf = ax.contourf(X, Y, data, levels=levels, cmap=cmap, vmin=vmin, vmax=vmax)
         ax.set_title(label)
@@ -196,6 +203,7 @@ def prepare_plot_important_pressures_grid(data_dict, vmin, vmax, cmap, title, cb
     plt.show()
 
 def plotting_different_pressures(DDR1, DDR2, save_location, start_year, start_month, start_day, end_year, end_month, end_day):
+    """Making the plots for the important pressures we noted above"""
     temp_maps, dust_maps, ice_maps, Ls_min, Ls_max = process_pressure_level(DDR1, DDR2)
     vmin_dust=0
     vmax_dust=0.005
@@ -235,10 +243,10 @@ def preparing_lat_lon_plots(fileloc, save_location, start_year, start_month, sta
     plt.rcParams.update({'font.size': 12, 'axes.titlesize': 14, 'axes.labelsize': 12, 'xtick.labelsize': 12, 'ytick.labelsize': 12})
     df = load_in_csv_data(fileloc)
     df = df.copy()
-    smallest_ls = df["L_s"].min()
-    largest_ls = df["L_s"].max()
+    smallest_Ls = df["L_s"].min()
+    largest_Ls = df["L_s"].max()
     
-    L_s_bin = np.arange(smallest_ls, largest_ls + 0.5, 0.5)
+    L_s_bin = np.arange(smallest_Ls, largest_Ls + 0.5, 0.5)
     day, night = split_df_by_time(df)
 
     vmin = 140 # temperature scale
@@ -246,7 +254,7 @@ def preparing_lat_lon_plots(fileloc, save_location, start_year, start_month, sta
 
     df['L_s_bin'] = pd.cut(df['L_s'], bins=L_s_bin)
 
-    dem_file = "mcs_data/mars_hrsc_mola_blenddem_global_200mp_1024.jpg"
+    dem_file = "mcstools_plus/mcstools_plus_example_data/mars_hrsc_mola_blenddem_global_200mp_1024.jpg"
 
     scale_factor = 0.9  # used to reduce resolution
     # using rasterio to load in the dem file

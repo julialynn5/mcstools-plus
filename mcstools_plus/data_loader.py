@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime, timedelta
 import glob
+from termcolor import colored, cprint
 
 from mcstools.reader import L2Reader
 from mcstools.loader import L2Loader
@@ -79,13 +80,12 @@ def loading_data(start_date, end_date, level_to_eval):
 def reading_data(start_year, start_month, start_day, end_year, end_month, end_day, level_to_eval):
     """Reading data that is downloaded onto a computer"""
     reader = L2Reader(pds=True) # i'm assuming you downloaded data from the PDS
-    print("Note for Prof. Davis: you can access the downloaded data in 'mcs_data/atmos.nmsu.edu/PDS/data/MROM_2160/DATA'")
+    cprint("Note for Professor Davis: you can access the downloaded data in 'mcstools_plus/mcstools_plus_example_data/atmos.nmsu.edu/PDS/data/MROM_2160/DATA'", 'red')
     
     # UNCOMMENT THIS OUT 
-    #path = str(input(f"\nInsert data folder location. Stop before the year.\n"))
-    path = 'mcs_data/atmos.nmsu.edu/PDS/data/MROM_2160/DATA'
+    path = str(input(f"Insert data folder location. Stop before the year: "))
     # grabbing the .TAB files. can edit to grab specific data, but i'm grabbing the full month.
-    print("Reading data... This will take about 1 minute.")
+    print("\nReading data... This will take about 1 minute.")
     sorted_data = collect_files(path, start_year, start_month, start_day, end_year, end_month, end_day)
     
     # making a list with all DDR1 data
